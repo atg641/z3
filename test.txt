@@ -1,0 +1,125 @@
+
+(declare-sort Services) ;Services are the components: an abstract type
+
+(declare-sort Topics)  ;Topics are the components an abstract type
+
+(echo "message decl")
+
+(declare-sort  () (MessageType entity ack))
+
+(declare-datatypes () ((Messages (makeMessage (messageType MessageType) (uuid Int)))))
+
+
+(declare-fun subscribe (Services Topics) Bool) 
+; (subscribe s1 t1) is true if s1 subscribes to t1
+
+(declare-fun sender (Messages) Services)
+; (sender m) = s1 if m sends message m (assumed to be unique)
+(declare-fun topic (Messages) Topics)
+; (topic m)  is the topic of the message
+
+(declare-fun sendTime (Messages) Int)
+(declare-fun receiveTime (Messages) Int)
+(declare-fun receivesMessage (Messages Services) Bool)
+
+(assert (forall ((mess Messages)) (> (sendTime mess) 0 )))
+
+
+(assert (forall ((mess Messages)) 
+	(< (sendTime mess)  (receiveTime mess))))
+;note quantification, messages are received after sent
+
+(assert (forall ((mess Messages) (s Services))
+      			(= (subscribe s (topic mess))
+      				(receivesMessage mess s)
+      			)
+		      ))
+; you will get the message if and only if you subscribe to a topic 
+; and a message is sent to the topic 
+
+(assert (forall ((mess1 Messages) (mess2 Messages) (t Topics)) 
+			(=> (and 
+					 (= (topic mess1) (topic mess2))
+					 (< (sendTime mess1) (sendTime mess2))
+				  )
+				(< (receiveTime mess1)
+				   (receiveTime mess2)
+				)
+			)
+		))
+
+; messages sent on the same topic arrive in order
+
+
+
+(declare-fun transmitTime(Messages) Int)
+(assert (forall ((mess Messages)) 
+	(= (transmitTime mess) 
+	(- (receiveTime mess)(sendTime mess) ))))
+
+(declare-fun maxLatency(Topics) Int)
+
+(assert (forall ((mess Messages))
+	(< (transmitTime mess) 
+	( maxLatency (topic mess)))))
+	                                   
+
+
+(push)
+
+(declare-const  aService Services)
+(declare-const  bService Services)
+(declare-const  cService Services)
+(declare-const topic1 Topics)
+(declare-const topic2 Topics)
+(declare-const topic3 Topics)
+(declare-const  message1 Messages)
+(declare-const  message2 Messages)
+(declare-const  message3 Messages)
+(declare-const  message4 Messages)
+(declare-const  nullMessage Messages)
+
+
+
+(assert (subscribe bService topic1))
+(assert (subscribe cService topic2))
+(assert (subscribe aService topic3))
+
+(assert (not (subscribe aService topic1)))
+(assert (not (subscribe aService topic2)))
+(assert      (subscribe aService topic3))
+
+(assert      (subscribe bService topic1))
+(assert (not (subscribe bService topic2)))
+(assert (not (subscribe bService topic3)))
+
+(assert (not (subscribe cService topic1)))
+(assert      (subscribe cService topic2))
+(assert (not (subscribe cService topic3)))
+
+(assert ( = (sender message1) aService))
+(assert ( = (topic message1) topic1))
+
+(assert ( = (sender message2) bService))
+(assert ( = (topic message2) topic2))
+
+(assert ( = (sender message3) cService))
+(assert ( = (topic message3) topic3))
+
+(define-fun isResponseTo((m1 Messages) (m2 Messages) )Bool
+  (or
+   (and  (= m1 message2) (= m2 message1))
+   (and  (= m1 message3) (= m2 message2))
+   (= m2 nullMessage)
+  ))
+  
+  (declare-const msgSeq (Array Int Messages))
+  
+  (assert  (exists ((i Int))
+  (isResponseTo (select msgSeq i)
+  				(select msgSeq ( + i 1))
+  				)))
+          
+(check-sat)
+(get-model)         
+ 

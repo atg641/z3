@@ -1,0 +1,289 @@
+(set-option :produce-models true) ; 
+
+(declare-sort Services) ;Services are the components: an abstract type
+
+(declare-sort Topics)  ;Topics are the components an abstract type
+
+(declare-datatypes () ((MessageType 
+	(Ack (ackOfId Int))  
+	(Entity (uuidOfEnt Int)))
+))
+
+(declare-datatypes () ((Messages 
+	(makeMessage (messageType MessageType) 
+				 (uuid Int)
+	)
+)))
+
+
+; (subscribe s1 t1) is true if s1 subscribes to t1
+(declare-fun subscribe (Services Topics) Bool) 
+
+;(sender m) = s  if s sends message m
+(declare-fun sender (Messages) Services)
+
+; (topic m)  is the topic of the message
+(declare-fun topic (Messages) Topics)
+
+
+;min and max latency for message deliver over the topic
+(declare-fun minLatency (Topics) Int)
+
+(declare-fun maxLatency (Topics) Int)
+
+
+(declare-fun sendTime (Messages) Int)
+(declare-fun receiveTime (Messages) Int)
+(declare-fun receivesMessage (Messages Services) Bool)
+
+;times are positive                                       
+(assert (forall ((mess Messages)) (> (sendTime mess) 0 )))
+
+
+; messages are received after sent
+(assert (forall ((mess Messages)) 
+	(< (sendTime mess)  (receiveTime mess))))
+
+
+; you will get the message if and only if you subscribe to a topic 
+; and a message is sent to the topic
+(assert (forall ((mess Messages) (s Services))
+      			(= (subscribe s (topic mess))
+      			 (receivesMessage mess s)
+      			)
+))
+ 
+
+; messages sent on the same topic arrive in order
+(assert (forall ((mess1 Messages) (mess2 Messages) (t Topics)) 
+    (=> (and 
+		    (= (topic mess1) (topic mess2))
+		    (< (sendTime mess1) (sendTime mess2))
+		)
+		(< (receiveTime mess1)
+		   (receiveTime mess2)
+		)
+	)
+))
+
+
+;define transmit time of a message
+(define-fun transmitTime((mess Messages)) Int
+    (- (receiveTime mess)(sendTime mess))
+)
+
+
+(assert  (forall ((mess  Messages))
+	(<= 
+	 (transmitTime mess)
+	 (maxLatency (topic mess))
+	 )
+))
+
+(assert  (forall ((mess  Messages))
+	(>= 
+	 (transmitTime mess)
+	 (minLatency (topic mess))
+	 )
+))
+
+
+
+(echo "standard  defns")
+(check-sat)
+
+;****************************************
+;  Model Instance
+;****************************************
+
+
+
+(declare-const topicA_B Topics)
+(declare-const topicB_C Topics)
+(declare-const topicC_A Topics)
+(declare-const topicB_A Topics)
+(declare-const topicC_B Topics)
+
+(assert (= (minLatency topicA_B) 4))
+(assert (= (maxLatency topicA_B) 8))
+
+(assert (= (minLatency topicB_C) 4))
+(assert (= (maxLatency topicB_C) 8))
+
+(assert (= (minLatency topicC_A) 4))
+(assert (= (maxLatency topicC_A) 8))
+
+(assert (= (minLatency topicA_B) 4))
+(assert (= (maxLatency topicA_B) 8))
+
+(assert (= (minLatency topicB_A) 4))
+(assert (= (maxLatency topicB_A) 8))
+
+(assert (= (minLatency topicC_B) 4))
+(assert (= (maxLatency topicC_B) 8))
+
+
+;services
+(declare-const  aService Services)
+(declare-const  bService Services)
+(declare-const  cService Services)
+
+;aService subscriptions
+(assert (not (subscribe aService topicA_B)))
+(assert (not (subscribe aService topicB_C)))
+(assert      (subscribe aService topicC_A))
+(assert      (subscribe aService topicB_A))
+(assert (not (subscribe aService topicC_B)))
+
+;bService subsciptions
+(assert      (subscribe bService topicA_B))
+(assert (not (subscribe bService topicB_C)))
+(assert (not (subscribe bService topicC_A)))
+(assert (not (subscribe bService topicB_A)))
+(assert      (subscribe bService topicC_B))
+
+;cService subscriptions
+(assert (not (subscribe cService topicA_B)))
+(assert      (subscribe cService topicB_C))
+(assert (not (subscribe cService topicC_A)))
+(assert (not (subscribe cService topicB_A)))
+(assert (not (subscribe cService topicC_B)))
+
+
+(declare-const messageAB Messages)
+(declare-const messageBA Messages)
+(declare-const messageBC Messages)
+(declare-const messageCB Messages)
+(declare-const messageCA Messages)
+
+(assert ( = messageAB (makeMessage (Entity 10) 1)))
+(assert ( = messageBA (makeMessage (Ack 10   ) 2)))
+(assert ( = messageBC (makeMessage (Entity 10) 3)))
+(assert ( = messageCA (makeMessage (Ack 10   ) 4)))
+(assert ( = messageCB (makeMessage (Ack 10   ) 5)))
+
+(assert (= (topic messageAB) topicA_B))
+(assert (= (topic messageBA) topicB_A))
+(assert (= (topic messageBC) topicB_C))
+(assert (= (topic messageCA) topicC_A))
+(assert (= (topic messageCB) topicC_B))
+
+
+(assert (= (sender messageAB) aService))
+(assert (= (sender messageBA) bService))
+(assert (= (sender messageBC) bService))
+(assert (= (sender messageCA) cService))
+(assert (= (sender messageCB) cService))
+
+
+(echo "Probe 1")
+(check-sat)
+
+(assert (forall ((mess Messages))
+	(< (transmitTime mess) 
+	   ( maxLatency (topic mess))
+	)
+))
+	
+(assert (forall ((mess Messages))
+	(< (transmitTime mess) 
+	   ( maxLatency (topic mess))
+	)
+))
+
+
+
+(define-fun messageSet ((m Messages))  Bool
+  (or 
+  	(= m messageAB) 
+  	(= m messageBA)  
+  	(= m messageBC)  
+  	(= m messageCB)  
+  	(= m messageCA))
+)
+
+
+(define-fun dependsOn ((mess1 Messages)  (mess2 Messages))  Bool
+  (or 
+  	(and 
+  		(= mess1 messageAB )
+  		(= mess2 messageBA )
+  	)
+
+  	(and 
+  		(= mess1 messageAB )
+  		(= mess2 messageBC )
+  	)
+
+  	(and 
+  		(= mess1 messageBC)
+  		(= mess2 messageCB)
+  	)
+  		
+  	(and 
+  		(= mess1 messageBC)
+  		(= mess2 messageCA)
+  	)
+  )
+)
+
+(echo "Probe 2")
+(check-sat)
+
+;assert you only depend on messages you receive
+(assert (forall ((mess1 Messages)(mess2 Messages))
+	(=> 
+		(dependsOn mess1 mess2)
+		( subscribe (sender mess2) (topic mess1))
+	)
+))
+
+(assert (dependsOn messageAB messageBC))
+(assert (dependsOn messageAB messageBA))
+(assert (dependsOn messageBC messageCA))
+		
+;Messages in MessageSet have unique uuids
+(assert (forall ((mess1 Messages)(mess2 Messages))
+	(=> 
+		(and
+		    (messageSet mess1)
+    		(messageSet mess2)
+    		(= (uuid mess1)(uuid mess2))
+    	)
+	    (= mess1 mess2)
+	)
+))
+
+
+
+;messages can't be sent before reception of messages they depend on
+(assert (forall ((mess1 Messages)(mess2 Messages))
+   (=> 
+      (dependsOn mess1 mess2)
+    	
+	 (> (sendTime mess2) (receiveTime mess1))
+   )
+))
+
+(echo "Probe 3")
+;(check-sat)
+
+
+(assert 
+	(=
+		(-	(receiveTime messageCA)
+			(sendTime messageAB))
+	200)
+)
+
+
+
+
+
+(echo "Instance Instantiation")
+(check-sat)
+(get-model)
+(simplify (receiveTime messageCA))
+
+
+

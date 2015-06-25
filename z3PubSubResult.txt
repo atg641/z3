@@ -1,0 +1,176 @@
+is model consistent?
+sat
+(model 
+  ;; universe for Messages:
+  ;;   Messages!val!2 Messages!val!1 Messages!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Messages!val!2 () Messages)
+  (declare-fun Messages!val!1 () Messages)
+  (declare-fun Messages!val!0 () Messages)
+  ;; cardinality constraint:
+  (forall ((x Messages))
+          (or (= x Messages!val!2) (= x Messages!val!1) (= x Messages!val!0)))
+  ;; -----------
+  ;; universe for Services:
+  ;;   Services!val!0 Services!val!1 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Services!val!0 () Services)
+  (declare-fun Services!val!1 () Services)
+  ;; cardinality constraint:
+  (forall ((x Services)) (or (= x Services!val!0) (= x Services!val!1)))
+  ;; -----------
+  ;; universe for Topics:
+  ;;   Topics!val!1 Topics!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Topics!val!1 () Topics)
+  (declare-fun Topics!val!0 () Topics)
+  ;; cardinality constraint:
+  (forall ((x Topics)) (or (= x Topics!val!1) (= x Topics!val!0)))
+  ;; -----------
+  (define-fun message1a () Messages
+    Messages!val!2)
+  (define-fun bService () Services
+    Services!val!0)
+  (define-fun topic2 () Topics
+    Topics!val!1)
+  (define-fun message1 () Messages
+    Messages!val!0)
+  (define-fun message2 () Messages
+    Messages!val!1)
+  (define-fun aService () Services
+    Services!val!1)
+  (define-fun topic1 () Topics
+    Topics!val!0)
+  (define-fun topic!1 ((x!1 Messages)) Topics
+    (ite (= x!1 Messages!val!1) Topics!val!1
+      Topics!val!0))
+  (define-fun k!0 ((x!1 Messages)) Messages
+    (ite (= x!1 Messages!val!0) Messages!val!0
+    (ite (= x!1 Messages!val!1) Messages!val!1
+      Messages!val!2)))
+  (define-fun sendTime!2 ((x!1 Messages)) Int
+    (ite (= x!1 Messages!val!1) 11
+    (ite (= x!1 Messages!val!2) 12
+      10)))
+  (define-fun sendTime ((x!1 Messages)) Int
+    (sendTime!2 (k!0 x!1)))
+  (define-fun topic ((x!1 Messages)) Topics
+    (topic!1 (k!0 x!1)))
+  (define-fun subscribe ((x!1 Services) (x!2 Topics)) Bool
+    (ite (and (= x!1 Services!val!1) (= x!2 Topics!val!0)) false
+    (ite (and (= x!1 Services!val!1) (= x!2 Topics!val!1)) false
+      true)))
+  (define-fun receivesMessage ((x!1 Messages) (x!2 Services)) Bool
+    (ite (and (= x!1 Messages!val!2) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 Messages!val!0) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 Messages!val!2) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 Messages!val!0) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 Messages!val!1) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 Messages!val!1) (= x!2 Services!val!1)) false
+      (subscribe x!2 (topic x!1)))))))))
+  (define-fun sender ((x!1 Messages)) Services
+    Services!val!1)
+  (define-fun receiveTime!3 ((x!1 Messages)) Int
+    (ite (= x!1 Messages!val!1) 12
+    (ite (= x!1 Messages!val!2) 13
+      11)))
+  (define-fun receiveTime ((x!1 Messages)) Int
+    (receiveTime!3 (k!0 x!1)))
+)
+out of order  messages on the same topic1
+unsat
+in  order messages on the same topic1
+sat
+unspecified receive time, but must be in order
+sat
+general assertion that  message1a is received before message1
+unsat
+general assertion that  message2 is received before message1
+sat
+(model 
+  ;; universe for Messages:
+  ;;   Messages!val!2 Messages!val!1 Messages!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Messages!val!2 () Messages)
+  (declare-fun Messages!val!1 () Messages)
+  (declare-fun Messages!val!0 () Messages)
+  ;; cardinality constraint:
+  (forall ((x Messages))
+          (or (= x Messages!val!2) (= x Messages!val!1) (= x Messages!val!0)))
+  ;; -----------
+  ;; universe for Services:
+  ;;   Services!val!0 Services!val!1 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Services!val!0 () Services)
+  (declare-fun Services!val!1 () Services)
+  ;; cardinality constraint:
+  (forall ((x Services)) (or (= x Services!val!0) (= x Services!val!1)))
+  ;; -----------
+  ;; universe for Topics:
+  ;;   Topics!val!1 Topics!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Topics!val!1 () Topics)
+  (declare-fun Topics!val!0 () Topics)
+  ;; cardinality constraint:
+  (forall ((x Topics)) (or (= x Topics!val!1) (= x Topics!val!0)))
+  ;; -----------
+  (define-fun message1a () Messages
+    Messages!val!2)
+  (define-fun bService () Services
+    Services!val!0)
+  (define-fun topic2 () Topics
+    Topics!val!1)
+  (define-fun message1 () Messages
+    Messages!val!0)
+  (define-fun message2 () Messages
+    Messages!val!1)
+  (define-fun aService () Services
+    Services!val!1)
+  (define-fun topic1 () Topics
+    Topics!val!0)
+  (define-fun sendTime!29 ((x!1 Messages)) Int
+    (ite (= x!1 Messages!val!1) 11
+    (ite (= x!1 Messages!val!2) 12
+      10)))
+  (define-fun k!27 ((x!1 Messages)) Messages
+    (ite (= x!1 Messages!val!0) Messages!val!0
+    (ite (= x!1 Messages!val!1) Messages!val!1
+      Messages!val!2)))
+  (define-fun sendTime ((x!1 Messages)) Int
+    (sendTime!29 (k!27 x!1)))
+  (define-fun topic!28 ((x!1 Messages)) Topics
+    (ite (= x!1 Messages!val!1) Topics!val!1
+      Topics!val!0))
+  (define-fun topic ((x!1 Messages)) Topics
+    (topic!28 (k!27 x!1)))
+  (define-fun subscribe ((x!1 Services) (x!2 Topics)) Bool
+    (ite (and (= x!1 Services!val!1) (= x!2 Topics!val!0)) false
+    (ite (and (= x!1 Services!val!1) (= x!2 Topics!val!1)) false
+      true)))
+  (define-fun receivesMessage ((x!1 Messages) (x!2 Services)) Bool
+    (ite (and (= x!1 Messages!val!2) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 Messages!val!0) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 Messages!val!2) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 Messages!val!0) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 Messages!val!1) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 Messages!val!1) (= x!2 Services!val!1)) false
+      (subscribe x!2 (topic x!1)))))))))
+  (define-fun sender ((x!1 Messages)) Services
+    Services!val!1)
+  (define-fun receiveTime!30 ((x!1 Messages)) Int
+    (ite (= x!1 Messages!val!1) 12
+    (ite (= x!1 Messages!val!2) 15
+      13)))
+  (define-fun receiveTime ((x!1 Messages)) Int
+    (receiveTime!30 (k!27 x!1)))
+)
+bService receives messages and a does not
+sat
+aService receives messages is false
+unsat

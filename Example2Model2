@@ -1,0 +1,124 @@
+(model 
+  ;; universe for Topics:
+  ;;   Topics!val!1 Topics!val!2 Topics!val!0 Topics!val!4 Topics!val!3 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Topics!val!1 () Topics)
+  (declare-fun Topics!val!2 () Topics)
+  (declare-fun Topics!val!0 () Topics)
+  (declare-fun Topics!val!4 () Topics)
+  (declare-fun Topics!val!3 () Topics)
+  ;; cardinality constraint:
+  (forall ((x Topics))
+          (or (= x Topics!val!1)
+              (= x Topics!val!2)
+              (= x Topics!val!0)
+              (= x Topics!val!4)
+              (= x Topics!val!3)))
+  ;; -----------
+  ;; universe for Services:
+  ;;   Services!val!2 Services!val!0 Services!val!1 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Services!val!2 () Services)
+  (declare-fun Services!val!0 () Services)
+  (declare-fun Services!val!1 () Services)
+  ;; cardinality constraint:
+  (forall ((x Services))
+          (or (= x Services!val!2) (= x Services!val!0) (= x Services!val!1)))
+  ;; -----------
+  (define-fun topicC_A () Topics
+    Topics!val!2)
+  (define-fun messageCB () Messages
+    (makeMessage (Ack 10) 5))
+  (define-fun topicB_C () Topics
+    Topics!val!1)
+  (define-fun messageAB () Messages
+    (makeMessage (Entity 10) 1))
+  (define-fun topicC_B () Topics
+    Topics!val!4)
+  (define-fun messageBA () Messages
+    (makeMessage (Ack 10) 2))
+  (define-fun topicB_A () Topics
+    Topics!val!3)
+  (define-fun aService () Services
+    Services!val!0)
+  (define-fun topicA_B () Topics
+    Topics!val!0)
+  (define-fun messageCA () Messages
+    (makeMessage (Ack 10) 4))
+  (define-fun bService () Services
+    Services!val!1)
+  (define-fun cService () Services
+    Services!val!2)
+  (define-fun messageBC () Messages
+    (makeMessage (Entity 10) 3))
+  (define-fun subscribe ((x!1 Services) (x!2 Topics)) Bool
+    (ite (and (= x!1 Services!val!0) (= x!2 Topics!val!2)) true
+    (ite (and (= x!1 Services!val!0) (= x!2 Topics!val!3)) true
+    (ite (and (= x!1 Services!val!1) (= x!2 Topics!val!0)) true
+    (ite (and (= x!1 Services!val!1) (= x!2 Topics!val!4)) true
+    (ite (and (= x!1 Services!val!2) (= x!2 Topics!val!1)) true
+      false))))))
+  (define-fun sendTime!49 ((x!1 Messages)) Int
+    (ite (= x!1 (makeMessage (Entity 10) 1)) 1
+    (ite (= x!1 (makeMessage (Entity 10) 3)) 6
+      11)))
+  (define-fun topic!47 ((x!1 Messages)) Topics
+    (ite (= x!1 (makeMessage (Ack 10) 2)) Topics!val!3
+    (ite (= x!1 (makeMessage (Entity 10) 3)) Topics!val!1
+    (ite (= x!1 (makeMessage (Ack 10) 4)) Topics!val!2
+    (ite (= x!1 (makeMessage (Ack 10) 5)) Topics!val!4
+      Topics!val!0)))))
+  (define-fun k!44 ((x!1 Messages)) Messages
+    (ite (= x!1 (makeMessage (Ack 10) 4)) (makeMessage (Ack 10) 4)
+    (ite (= x!1 (makeMessage (Entity 10) 3)) (makeMessage (Entity 10) 3)
+    (ite (= x!1 (makeMessage (Ack 10) 5)) (makeMessage (Ack 10) 5)
+    (ite (= x!1 (makeMessage (Ack 10) 2)) (makeMessage (Ack 10) 2)
+      (makeMessage (Entity 10) 1))))))
+  (define-fun k!43 ((x!1 Messages)) Messages
+    (ite (= x!1 (makeMessage (Entity 10) 3)) (makeMessage (Entity 10) 3)
+    (ite (= x!1 (makeMessage (Ack 10) 4)) (makeMessage (Ack 10) 4)
+    (ite (= x!1 (makeMessage (Entity 10) 1)) (makeMessage (Entity 10) 1)
+    (ite (= x!1 (makeMessage (Ack 10) 2)) (makeMessage (Ack 10) 2)
+      (makeMessage (Ack 10) 5))))))
+  (define-fun maxLatency ((x!1 Topics)) Int
+    8)
+  (define-fun minLatency ((x!1 Topics)) Int
+    4)
+  (define-fun topic ((x!1 Messages)) Topics
+    (topic!47 (k!43 x!1)))
+  (define-fun receivesMessage ((x!1 Messages) (x!2 Services)) Bool
+    (ite (and (= x!1 (makeMessage (Entity 10) 1)) (= x!2 Services!val!0)) false
+    (ite (and (= x!1 (makeMessage (Entity 10) 1)) (= x!2 Services!val!1)) true
+    (ite (and (= x!1 (makeMessage (Entity 10) 1)) (= x!2 Services!val!2)) false
+    (ite (and (= x!1 (makeMessage (Ack 10) 2)) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 (makeMessage (Ack 10) 2)) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 (makeMessage (Ack 10) 2)) (= x!2 Services!val!2)) false
+    (ite (and (= x!1 (makeMessage (Entity 10) 3)) (= x!2 Services!val!0)) false
+    (ite (and (= x!1 (makeMessage (Entity 10) 3)) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 (makeMessage (Entity 10) 3)) (= x!2 Services!val!2)) true
+    (ite (and (= x!1 (makeMessage (Ack 10) 4)) (= x!2 Services!val!0)) true
+    (ite (and (= x!1 (makeMessage (Ack 10) 4)) (= x!2 Services!val!1)) false
+    (ite (and (= x!1 (makeMessage (Ack 10) 4)) (= x!2 Services!val!2)) false
+    (ite (and (= x!1 (makeMessage (Ack 10) 5)) (= x!2 Services!val!0)) false
+    (ite (and (= x!1 (makeMessage (Ack 10) 5)) (= x!2 Services!val!1)) true
+    (ite (and (= x!1 (makeMessage (Ack 10) 5)) (= x!2 Services!val!2)) false
+      (subscribe x!2 (topic x!1))))))))))))))))))
+  (define-fun sendTime ((x!1 Messages)) Int
+    (sendTime!49 (k!43 x!1)))
+  (define-fun sender!50 ((x!1 Messages)) Services
+    (ite (= x!1 (makeMessage (Entity 10) 1)) Services!val!0
+    (ite (= x!1 (makeMessage (Ack 10) 4)) Services!val!2
+    (ite (= x!1 (makeMessage (Ack 10) 5)) Services!val!2
+      Services!val!1))))
+  (define-fun sender ((x!1 Messages)) Services
+    (sender!50 (k!44 x!1)))
+  (define-fun receiveTime!48 ((x!1 Messages)) Int
+    (ite (= x!1 (makeMessage (Entity 10) 1)) 5
+    (ite (= x!1 (makeMessage (Entity 10) 3)) 10
+    (ite (= x!1 (makeMessage (Ack 10) 5)) 16
+      15))))
+  (define-fun receiveTime ((x!1 Messages)) Int
+    (receiveTime!48 (k!43 x!1)))
+)
