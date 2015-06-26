@@ -1,0 +1,303 @@
+(set-option :produce-models true) ; 
+
+(declare-sort Services) ;Services are SensorTargetPairing, JSTARS TDLI, etc
+(declare-const  JSTARS Services) ; JSTARS _TLDI
+(declare-const  UAV_TLDI Services) ; UAV_TLDI
+(declare-const  SIDE Services) ; SIDE Proxy
+(declare-const  UAV_GS Services) ; UAV Ground Station
+ 
+(declare-datatypes () ((MessageType 
+
+	(J12_MissionAssignment (trackId Int))
+	(OMS_METATASK (sourceSystemId Int))
+	(STANAG_TASK (senderID Int))
+	
+	(STANAG_ACK (taskUUID Int))
+	(OMS_METATASK_STATUS (MetaTaskUUID Int ))
+	(J12_ACK (trackNumber Int))
+	
+)))
+
+(declare-datatypes () ((Messages 
+	(makeMessage (messageType MessageType) 
+				 (uuid Int)
+	)
+)))
+
+
+(define-fun m9()  Messages (makeMessage (J12_MissionAssignment 100) 9))
+(define-fun m10() Messages (makeMessage (OMS_METATASK 100) 10))
+(define-fun m11() Messages (makeMessage (STANAG_TASK 100) 11))
+(define-fun m12() Messages (makeMessage (STANAG_ACK 100) 12))
+(define-fun m13() Messages (makeMessage (OMS_METATASK_STATUS 100) 13))
+(define-fun m14() Messages (makeMessage (J12_ACK 100) 14))
+
+
+(declare-sort Topics)  ;assume a topic for each message type 
+; and orginating service
+
+;Topics related to task assignment
+(declare-const JSTARS_J12_MissionAssignment Topics)
+(declare-const UAV_TDLI_OMS_TASK Topics)
+(declare-const SIDE_STANAG_TASK Topics)
+
+;Topics related to ack
+(declare-const UAV_GS_ACK Topics)
+(declare-const SIDE_OMS_METATASK_STATUS Topics)
+(declare-const UAV_TLDI_J12_ACK Topics)
+
+
+; (subscribe s1 t1) is true if s1 subscribes to t1
+(define-fun subscribe ((s Services) (t Topics)) Bool
+(ite (and (= s UAV_TLDI)  (= t JSTARS_J12_MissionAssignment)) true
+(ite (and (= s SIDE)  	  (= t UAV_TDLI_OMS_TASK)) true
+(ite (and (= s UAV_GS)    (= t SIDE_STANAG_TASK)) true
+(ite (and (= s SIDE)      (= t UAV_GS_ACK)) true
+(ite (and (= s UAV_TLDI)  (= t SIDE_OMS_METATASK_STATUS)) true
+(ite (and (= s JSTARS)    (= t UAV_TLDI_J12_ACK)) true
+false)))))))
+
+;(sender m) = s  if s sends message m
+(define-fun sender((m Messages)) Services
+(ite (= m m9)   JSTARS
+(ite (= m m10)  UAV_TLDI
+(ite (= m m11)  SIDE
+(ite (= m m12)  UAV_GS
+(ite (= m m13)  SIDE
+UAV_TLDI
+))))))
+
+; (topic m)  is the topic of the message
+(define-fun topic((m Messages)) Topics
+(ite (= m m9)   JSTARS_J12_MissionAssignment
+(ite (= m m10)  UAV_TDLI_OMS_TASK
+(ite (= m m11)  SIDE_STANAG_TASK
+(ite (= m m12)  UAV_GS_ACK
+(ite (= m m13)  SIDE_OMS_METATASK_STATUS
+UAV_TLDI_J12_ACK
+))))))
+
+
+;min and max latency for message deliver over the topic
+(declare-fun minLatency (Topics) Int)
+(declare-fun maxLatency (Topics) Int)
+
+(declare-fun sendTime (Messages) Int)
+(declare-fun receiveTime (Messages) Int)
+(declare-fun receivesMessage (Messages Services) Bool)
+
+;times are positive                                       
+(assert (forall ((mess Messages)) (> (sendTime mess) 0 )))
+
+; messages are received after sent
+(assert (forall ((mess Messages)) 
+	(< (sendTime mess)  (receiveTime mess))))
+
+
+; you will get the message if and only if you subscribe to a topic 
+; and a message is sent to the topic
+(assert (forall ((mess Messages) (s Services))
+      			(= (subscribe s (topic mess))
+      			 (receivesMessage mess s)
+      			)
+))
+ 
+; messages sent on the same topic arrive in order
+(assert (forall ((mess1 Messages) (mess2 Messages) (t Topics)) 
+    (=> (and 
+		    (= (topic mess1) (topic mess2))
+		    (< (sendTime mess1) (sendTime mess2))
+		)
+		(< (receiveTime mess1)
+		   (receiveTime mess2)
+		)
+	)
+))
+
+
+;define transmit time of a message
+(define-fun transmitTime((mess Messages)) Int
+    (- (receiveTime mess)(sendTime mess))
+)
+
+
+;Assert that transit times are always within the max latency
+(assert  (forall ((mess  Messages))
+	(<= 
+	 (transmitTime mess)
+	 (maxLatency (topic mess))
+	 )
+))
+
+;Assert that transit times are always greater or equal to  the min latency
+(assert  (forall ((mess  Messages))
+	(>= 
+	 (transmitTime mess)
+	 (minLatency (topic mess))
+	 )
+))
+
+
+
+(echo "standard  defns")
+(check-sat)
+
+
+(assert (= (minLatency JSTARS_J12_MissionAssignment) 4))
+(assert (= (maxLatency JSTARS_J12_MissionAssignment) 8))
+
+(assert (= (minLatency UAV_TDLI_OMS_TASK) 4))
+(assert (= (maxLatency UAV_TDLI_OMS_TASK) 8))
+
+(assert (= (minLatency SIDE_STANAG_TASK) 4))
+(assert (= (maxLatency SIDE_STANAG_TASK) 8))
+
+(assert (= (minLatency JSTARS_J12_MissionAssignment) 4))
+(assert (= (maxLatency JSTARS_J12_MissionAssignment) 8))
+
+(assert (= (minLatency UAV_GS_ACK) 4))
+(assert (= (maxLatency UAV_GS_ACK) 8))
+
+(assert (= (minLatency SIDE_OMS_METATASK_STATUS) 4))
+(assert (= (maxLatency SIDE_OMS_METATASK_STATUS) 8))
+
+
+
+
+(define-fun messageSet ((m Messages))  Bool
+  (or 
+  	(= m m9) 
+  	(= m m10)  
+  	(= m m11)  
+  	(= m m12)  
+  	(= m m13)
+  	(= m m14)
+  	)
+)
+
+
+(define-fun dependsOn ((mess1 Messages)  (mess2 Messages))  Bool
+  (or 
+  	(and 
+  		(= mess1 m9 )
+  		(= mess2 m10 )
+  	)
+
+  	(and 
+  		(= mess1 m10 )
+  		(= mess2 m11 )
+  	)
+
+  	(and 
+  		(= mess1 m11)
+  		(= mess2 m12)
+  	)
+  		
+  	(and 
+  		(= mess1 m12)
+  		(= mess2 m13)
+  	)
+  	(and 
+  		(= mess1 m13)
+  		(= mess2 m14)
+  	)
+  )
+)
+
+
+;assert you only depend on messages you receive
+(assert (forall ((mess1 Messages)(mess2 Messages))
+	(=> 
+		(dependsOn mess1 mess2)
+		( subscribe (sender mess2) (topic mess1))
+	)
+))
+
+
+		
+;Messages in MessageSet have unique uuids
+(assert (forall ((mess1 Messages)(mess2 Messages))
+	(=> 
+		(and
+		    (messageSet mess1)
+    		(messageSet mess2)
+    		(= (uuid mess1)(uuid mess2))
+    	)
+	    (= mess1 mess2)
+	)
+))
+
+
+
+;messages can't be sent before reception of messages they depend on
+(assert (forall ((mess1 Messages)(mess2 Messages))
+   (=> 
+      (dependsOn mess1 mess2)
+    	
+	 (>= (sendTime mess2) (receiveTime mess1))
+   )
+))
+
+(echo "Model defined")
+(check-sat)
+
+
+(push)
+(assert 
+	(=
+		(-	(receiveTime m14)
+			(sendTime m9))
+	2)
+)
+	
+(echo "ack can't come back very quickly")
+(check-sat)
+(pop)
+
+
+(push)
+(assert 
+	(=
+		(-	(receiveTime m14)
+			(sendTime m9))
+	2000)
+)
+
+(echo "ack can come back slowly")
+(check-sat)
+(pop)
+
+(assert (forall ((mess1 Messages)(mess2 Messages))
+	(=> 
+		(dependsOn mess1  mess2) 	
+	    (= (sendTime  mess2) (receiveTime  mess1))
+	)
+))
+
+
+(push)
+(assert 
+	(=
+		(-	(receiveTime m14)
+			(sendTime m9))
+	2000)
+)
+
+(echo "ack canno longer come back slowly")
+(check-sat)
+(pop)
+
+(assert 
+	(=
+		(-	(receiveTime m14)
+			(sendTime m9))
+	36)
+)
+
+(echo "Instance Instantiation")
+(check-sat)
+(get-model)
+
+
+
+
