@@ -34,7 +34,7 @@
 
 
 (declare-sort Topics)  ;assume a topic for each message type 
-; and orginating service
+; and originating service
 
 ;Topics related to task assignment
 (declare-const JSTARS_J12_MissionAssignment Topics)
@@ -283,7 +283,7 @@ UAV_TLDI_J12_ACK
 	2000)
 )
 
-(echo "ack canno longer come back slowly")
+(echo "ack can longer come back slowly")
 (check-sat)
 (pop)
 

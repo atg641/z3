@@ -1,0 +1,129 @@
+trackDomainConcepts : THEORY
+
+  BEGIN
+
+  UUID : TYPE = string
+
+  GregorianTime : TYPE
+
+  UnixTime : Type = nat
+
+  Time : DATATYPE  % each possible time representation used in some message format
+    BEGIN
+     gregorian(getGreg : GregorianTime) : isGregorian?
+     unix(getUnix : UnixTime) : isUnix?
+    END Time
+
+ 
+  LinearDistance : TYPE  = real
+  LinearDistanceUnits: TYPE = {meter, feet, mile, nm} %ad hoc treatment of units
+
+  units(dist : LinearDistance) : LinearDistanceUnits
+  
+  DegreeLat : TYPE = { d: real | d >= -90  AND  d <= 90.0}
+  DegreeLon : TYPE = { d: real | d > -180.0  AND  d < 180.0}
+  Degree : TYPE = { d: real | d >= 0  AND  d <  360}
+
+  GeodeticPosition: TYPE =
+    [#
+      latitude  : DegreeLat,
+      longitude : DegreeLon,
+      elevation : lift[real]
+    #]
+
+
+  LocalCoordinateSystem : TYPE = 
+  [#
+     origin : GeodeticPosition,
+     xAxisRotation : Degree,
+     yAxisRotation : Degree,
+     zAxisRotation : Degree
+  #]
+
+  
+  LocalCartesianPosition : TYPE =
+    [#
+        posx: LinearDistance,
+        posy: LinearDistance,
+        posz: lift[LinearDistance],
+        localSystem: LocalCoordinateSystem
+    #]
+
+% Can also  formalize a local position given as [Theta1, Theta2, d]
+
+
+  TrackPosition : DATATYPE  
+        BEGIN
+         relative(getRel: LocalCartesianPosition) : isRelative?
+         absolute(getAbs:  GeodeticPosition) : isAbsolute?
+        END TrackPosition
+
+  convert(t : LocalCartesianPosition) : GeodeticPosition %= ....
+  
+
+  trackPositionAbsolute(t:TrackPosition) : GeodeticPosition =
+   CASES t OF
+    relative(getRel): convert(getRel),
+    absolute(getAbs): getAbs
+   ENDCASES
+
+  trackPositionAbsoluteIdentityOnAbsoluteTracks : LEMMA
+  FORALL(t: TrackPosition) :
+         isAbsolute?(t) IMPLIES trackPositionAbsolute(t) = getAbs(t)
+
+  
+  
+  END trackDomainConcepts
+
+stanag4676 : THEORY
+   BEGIN
+
+  IMPORTING trackDomainConcepts
+
+  TrackItem : Type = { ti :
+  [#
+        trackItemUUID : UUID,   %identifies the entity being tracked
+        trackItemTime : Time,
+        trackPosition : TrackPosition
+  #]
+  | isGregorian?(ti`trackItemTime)}
+
+
+ TrackItemRel : Type = {ti : TrackItem | isRelative?(ti`trackPosition)}
+ TrackItemAbs : Type = {ti : TrackItem | isAbsolute?(ti`trackPosition)}
+
+ trackEquivalent(t1 : TrackItemRel, t2 : TrackItemAbs) : boolean =
+    t1`trackItemUUID = t2`trackItemUUID AND
+    t1`trackItemTime = t2`trackItemTime AND
+    trackPositionAbsolute(t1`trackPosition) = trackPositionAbsolute(t2`trackPosition) 
+
+
+% This may be too strong: can  a 3D track be equal to a 2D track 
+% e.g. when elevation = surface elevation  above sea level
+
+
+ convert(tRel:  TrackItemRel) : TrackItemAbs =
+    (#  trackItemUUID := tRel`trackItemUUID,
+        trackItemTime := tRel`trackItemTime,
+        trackPosition := absolute(convert(getRel(tRel`trackPosition)))
+    #)
+
+
+  linearMeter: AXIOM
+   FORALL (pos: LocalCartesianPosition):
+     units(pos`posx) = meter AND
+     units(pos`posy) = meter AND
+     units(down(pos`posz)) = meter
+  
+
+  convert : LEMMA
+  FORALL (tRel: TrackItepmRel, tAbs: TrackItemAbs):
+  trackEquivalent(tRel, tAbs) IMPLIES 
+  convert(tRel) = tAbs
+
+  END stanag4676
+
+
+%stanageWithAbsolute  
+%stanagWithRel
+

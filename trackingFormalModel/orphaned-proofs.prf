@@ -1,0 +1,1 @@
+("track" stanag4676 convertOK 0 (convertOK-1 nil 3641207243 ("" (grind) (("" (decompose-equality 1) (("" (grind) (("" (typepred "absolute(getAbs(tAbs!1`trackPosition))") (("" (grind) (("" (typepred "tRel!1") (("" (typepred "tAbs!1") (("" (postpone) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) nil shostak))
